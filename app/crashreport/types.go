@@ -40,7 +40,7 @@ func (this *MapStringStringAllowsEmptyArray) UnmarshalJSON(data []byte) error {
 
 // CrashReport ...
 type CrashReport struct {
-	Duplicate bool
+	DuplicatedID int
 
 	Data       *ReportData
 	ReportDate time.Time
@@ -101,7 +101,7 @@ type Report struct {
 	OS                string
 	SubmitDate        int64 `db:"submitDate"`
 	ReportDate        int64 `db:"reportDate"`
-	Duplicate         bool
+	DuplicatedID      int   `db:"duplicatedId"`
 	Resolved          bool
 	ReporterName      string `db:"reporterName"`
 	ReporterEmail     string `db:"reporterEmail"`

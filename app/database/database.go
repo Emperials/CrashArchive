@@ -55,7 +55,7 @@ func (db *DB) InsertReport(report *crashreport.CrashReport, reporterName string,
 		OS:                report.Data.General.OS,
 		SubmitDate:        time.Now().Unix(),
 		ReportDate:        report.ReportDate.Unix(),
-		Duplicate:         report.Duplicate,
+		DuplicatedID:      report.DuplicatedID,
 		ReporterName:      reporterName,
 		ReporterEmail:     reporterEmail,
 	})
@@ -125,14 +125,9 @@ func (db *DB) FetchReport(id int64) (*crashreport.CrashReport, error) {
 	return crashreport.FromJson(bytes)
 }
 
-func (db *DB) CheckDuplicate(report *crashreport.CrashReport) (bool, error) {
-	var dupes int
-	err := db.Get(&dupes, "SELECT COUNT(id) FROM crash_reports WHERE message = ? AND file = ? AND line = ? AND duplicate = false;", report.Error.Message, report.Error.File, report.Error.Line)
-	if err != nil {
-		return false, err
-	}
-
-	return dupes != 0, nil
+func (db *DB) CheckDuplicate(report *crashreport.CrashReport) (duplicatedID int, err error) {
+	err = db.Get(&duplicatedID, "SELECT id FROM crash_reports WHERE message = ? AND file = ? AND line = ? AND duplicate = NULL;", report.Error.Message, report.Error.File, report.Error.Line)
+	return
 }
 
 func (db *DB) CheckResolved(id int64) (resolved bool, err error) {

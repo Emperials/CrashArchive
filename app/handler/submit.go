@@ -99,9 +99,9 @@ func SubmitPost(db *database.DB, wh *webhook.Webhook, config *app.Config) http.H
 
 		report.ClassifyMessage() //we use the classified message to get a better hit on dupes without useless information
 
-		dupes, err := db.CheckDuplicate(report)
-		report.Duplicate = dupes
-		if dupes {
+		duplicatedID, err := db.CheckDuplicate(report)
+		report.DuplicatedID = duplicatedID
+		if duplicatedID > 0 {
 			snippet := report.Data.Error.Message
 			if len(snippet) > 80 {
 				snippet = snippet[:80]
@@ -121,7 +121,7 @@ func SubmitPost(db *database.DB, wh *webhook.Webhook, config *app.Config) http.H
 		}
 
 		if wh != nil {
-			if !report.Duplicate {
+			if duplicatedID == 0 {
 				go wh.Post(webhook.ReportListEntry{
 					ReportId: uint64(id),
 					Message:  report.Error.Message,

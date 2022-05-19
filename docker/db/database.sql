@@ -14,7 +14,7 @@ CREATE TABLE crash_reports (
       os VARCHAR(16),
       submitDate INT,
       reportDate INT,
-      duplicate BOOL,
+      duplicatedId INT DEFAULT NULL,
       `resolved` BOOL,
       reporterName VARCHAR(127),
       reporterEmail VARCHAR(127),

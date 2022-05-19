@@ -20,7 +20,7 @@ func ResolveGet(db *database.DB) http.HandlerFunc {
 				return
 			}
 
-			db.Exec("UPDATE crash_reports SET resolved=1 WHERE id = ?", reportID)
+			db.Exec("UPDATE crash_reports SET resolved=1 WHERE id = ? OR duplicatedId = ?", reportID, reportID)
 			log.Printf("user %s resolved crash report %d", userInfo.Name, reportID)
 			redirectUrl := r.URL.Query().Get("redirect")
 			if redirectUrl == "" {
