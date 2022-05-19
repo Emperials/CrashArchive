@@ -7,5 +7,7 @@ import (
 )
 
 func HomeGet(w http.ResponseWriter, r *http.Request) {
-	template.ExecuteTemplate(w, r, "home")
+	if requireLogin(w, r) {
+		template.ExecuteTemplate(w, r, "home")
+	}
 }

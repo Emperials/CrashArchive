@@ -4,27 +4,28 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/pmmp/CrashArchive/app"
+	"github.com/pmmp/CrashArchive/app/crashreport"
+	"github.com/pmmp/CrashArchive/app/database"
+	"github.com/pmmp/CrashArchive/app/template"
+	"github.com/pmmp/CrashArchive/app/webhook"
 	"io/ioutil"
 	"log"
 	"mime/multipart"
 	"net/http"
 	"strings"
-
-	"github.com/pmmp/CrashArchive/app"
-	"github.com/pmmp/CrashArchive/app/crashreport"
-	"github.com/pmmp/CrashArchive/app/template"
-	"github.com/pmmp/CrashArchive/app/database"
-	"github.com/pmmp/CrashArchive/app/webhook"
 )
 
 func SubmitGet(w http.ResponseWriter, r *http.Request) {
-	template.ExecuteTemplate(w, r, "submit")
+	if requireLogin(w, r) {
+		template.ExecuteTemplate(w, r, "submit")
+	}
 }
 
 func SubmitPost(db *database.DB, wh *webhook.Webhook, config *app.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, banned := config.IpBanlistMap[r.RemoteAddr]; banned {
-			log.Printf("rejected submission from banned IP: %s\n", r.RemoteAddr);
+			log.Printf("rejected submission from banned IP: %s\n", r.RemoteAddr)
 			sendError(w, r, "", http.StatusTeapot, true)
 			return
 		}
@@ -71,12 +72,6 @@ func SubmitPost(db *database.DB, wh *webhook.Webhook, config *app.Config) http.H
 			return
 		}
 
-		if report.Data.General.Name != "PocketMine-MP" {
-			log.Printf("spoon detected from: %s\n", r.RemoteAddr)
-			sendError(w, r, "", http.StatusTeapot, isAPI)
-			return
-		}
-
 		if report.Data.General.GIT == strings.Repeat("00", 20) || strings.HasSuffix(report.Data.General.GIT, "-dirty") {
 			log.Printf("invalid git hash %s in report from: %s\n", report.Data.General.GIT, r.RemoteAddr)
 			sendError(w, r, "", http.StatusTeapot, isAPI)
@@ -94,7 +89,7 @@ func SubmitPost(db *database.DB, wh *webhook.Webhook, config *app.Config) http.H
 			}
 		}
 
-		for _, pattern := range(config.CompiledErrorBlacklistPatterns) {
+		for _, pattern := range config.CompiledErrorBlacklistPatterns {
 			if pattern.MatchString(report.Data.Error.Message) {
 				log.Printf("blacklisted error pattern match in report from: %s", "", r.RemoteAddr)
 				sendError(w, r, "This crashdump is blacklisted", http.StatusUnprocessableEntity, isAPI)
@@ -129,7 +124,7 @@ func SubmitPost(db *database.DB, wh *webhook.Webhook, config *app.Config) http.H
 			if !report.Duplicate {
 				go wh.Post(webhook.ReportListEntry{
 					ReportId: uint64(id),
-					Message: report.Error.Message,
+					Message:  report.Error.Message,
 				})
 			} else {
 				wh.BumpDupeCounter()
@@ -144,7 +139,6 @@ func SubmitPost(db *database.DB, wh *webhook.Webhook, config *app.Config) http.H
 		} else {
 			http.Redirect(w, r, fmt.Sprintf("/view/%d", id), http.StatusMovedPermanently)
 		}
-
 	}
 }
 

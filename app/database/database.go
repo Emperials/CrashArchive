@@ -36,9 +36,10 @@ func New(config *Config) (*DB, error) {
 }
 
 var queryInsertReport = `INSERT INTO crash_reports
-		(plugin, pluginInvolvement, version, build, file, message, line, type, os, submitDate, reportDate, duplicate, reporterName, reporterEmail)
+		(plugin, pluginInvolvement, version, build, file, message, line, type, os, submitDate, reportDate, duplicate, resolved, reporterName, reporterEmail)
 	VALUES
-		(:plugin, :pluginInvolvement, :version, :build, :file, :message, :line, :type, :os, :submitDate, :reportDate, :duplicate, :reporterName, :reporterEmail)`
+		(:plugin, :pluginInvolvement, :version, :build, :file, :message, :line, :type, :os, :submitDate, :reportDate, :duplicate, :resolved, :reporterName, :reporterEmail)`
+
 const queryInsertBlob = `INSERT INTO crash_report_blobs (id, crash_report_json) VALUES (?, ?)`
 
 func (db *DB) InsertReport(report *crashreport.CrashReport, reporterName string, reporterEmail string, originalData []byte) (int64, error) {
@@ -75,7 +76,7 @@ func (db *DB) InsertReport(report *crashreport.CrashReport, reporterName string,
 	}
 
 	var zlibBuf bytes.Buffer
-	zw, _:= zlib.NewWriterLevel(&zlibBuf, zlib.BestCompression)
+	zw, _ := zlib.NewWriterLevel(&zlibBuf, zlib.BestCompression)
 	_, err = zw.Write(originalData)
 	if err != nil {
 		return -1, err
@@ -134,12 +135,17 @@ func (db *DB) CheckDuplicate(report *crashreport.CrashReport) (bool, error) {
 	return dupes != 0, nil
 }
 
+func (db *DB) CheckResolved(id int64) (resolved bool, err error) {
+	err = db.Get(&resolved, "SELECT resolved FROM crash_reports WHERE id=?;", id)
+	return
+}
+
 func (db *DB) AuthenticateUser(username string, password []byte) (user.UserInfo, error) {
 	var result struct {
 		PasswordHash []byte `db:"passwordHash"`
-		Permission int `db:"permission"`
+		Permission   int    `db:"permission"`
 	}
-	err := db.Get(&result, "SELECT passwordHash, permission FROM users WHERE username = ? LIMIT 1", username);
+	err := db.Get(&result, "SELECT passwordHash, permission FROM users WHERE username = ? LIMIT 1", username)
 	if err != nil {
 		return user.DefaultUserInfo(), fmt.Errorf("database error: %v", err)
 	}
@@ -148,7 +154,7 @@ func (db *DB) AuthenticateUser(username string, password []byte) (user.UserInfo,
 		return user.DefaultUserInfo(), fmt.Errorf("failed to verify password: %v", err)
 	}
 	return user.UserInfo{
-		Name: username,
+		Name:       username,
 		Permission: user.UserPermission(result.Permission),
 	}, nil
 }

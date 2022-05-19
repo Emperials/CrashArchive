@@ -2,8 +2,8 @@ package handler
 
 import (
 	"log"
-	"net/url"
 	"net/http"
+	"net/url"
 
 	"errors"
 	"fmt"
@@ -18,13 +18,15 @@ import (
 
 func ListGet(db *database.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		filter, filterParams, err := buildSearchQuery(r.URL.Query())
-		if err != nil {
-			template.ErrorTemplate(w, r, "", http.StatusBadRequest)
-			return
+		if requireLogin(w, r) {
+			filter, filterParams, err := buildSearchQuery(r.URL.Query())
+			if err != nil {
+				template.ErrorTemplate(w, r, "", http.StatusBadRequest)
+				return
+			}
+			log.Printf("search generated query: %s\n", filter)
+			ListFilteredReports(w, r, db, filter, filterParams...)
 		}
-		log.Printf("search generated query: %s\n", filter)
-		ListFilteredReports(w, r, db, filter, filterParams...)
 	}
 }
 
@@ -74,13 +76,13 @@ func buildSearchQuery(params url.Values) (string, []interface{}, error) {
 	message := params.Get("message")
 	if message != "" {
 		filters = append(filters, "message LIKE ?")
-		filterParams = append(filterParams, "%" + message + "%")
+		filterParams = append(filterParams, "%"+message+"%")
 	}
 
 	errortype := params.Get("errortype")
 	if errortype != "" {
 		filters = append(filters, "type LIKE ?")
-		filterParams = append(filterParams, "%" + errortype + "%")
+		filterParams = append(filterParams, "%"+errortype+"%")
 	}
 
 	if causes := params["cause"]; causes != nil && len(causes) > 0 {
@@ -88,14 +90,14 @@ func buildSearchQuery(params url.Values) (string, []interface{}, error) {
 		for _, cause := range causes {
 			var involvement string = ""
 			switch cause {
-				case "core":
-					involvement = crashreport.PINone
-				case "plugin":
-					involvement = crashreport.PIDirect
-				case "plugin_indirect":
-					involvement = crashreport.PIIndirect
-				default:
-					return "", nil, fmt.Errorf("Invalid cause filter %s", cause)
+			case "core":
+				involvement = crashreport.PINone
+			case "plugin":
+				involvement = crashreport.PIDirect
+			case "plugin_indirect":
+				involvement = crashreport.PIIndirect
+			default:
+				return "", nil, fmt.Errorf("Invalid cause filter %s", cause)
 			}
 			involvements = append(involvements, involvement)
 		}
@@ -183,7 +185,7 @@ func ListFilteredReports(w http.ResponseWriter, r *http.Request, db *database.DB
 	rangeStart := (pageId - 1) * pageSize
 
 	var reports []crashreport.Report
-	querySelect := fmt.Sprintf("SELECT id, version, plugin, message, pluginInvolvement FROM crash_reports %s ORDER BY id DESC LIMIT %d, %d", filter, rangeStart, pageSize)
+	querySelect := fmt.Sprintf("SELECT id, version, plugin, message, resolved FROM crash_reports %s ORDER BY id DESC LIMIT %d, %d", filter, rangeStart, pageSize)
 	err = db.Select(&reports, querySelect, filterParams...)
 	if err != nil {
 		log.Println(err)

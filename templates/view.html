@@ -13,10 +13,10 @@
         <i class="large material-icons">menu</i>
     </a>
     <ul>
-        <li><a href="{{.ReportIssueURL}}" class="btn-floating fab-text-option">Report GitHub issue</a></li>
         <li><a href="/search/report?id={{.ReportID}}" class="btn-floating fab-text-option">Find duplicates</a></li>
         <li><a href="/download/{{.ReportID}}" class="btn-floating fab-text-option">Download</a></li>
         <li><a href="/view/{{.ReportID}}/raw" class="btn-floating fab-text-option">View raw</a></li>
+        <li><a href="/resolve/{{.ReportID}}" class="btn-floating fab-text-option">Resolve</a></li>
         {{if .HasDeletePerm}}
         <li><a onclick="deleteHandler()" class="btn-floating fab-text-option">Delete</a></li>
         {{end}}
@@ -25,8 +25,7 @@
 <div class="container">
     <div class="row">
         <div class="col s12">
-            <h5 class="light truncate" style="line-height: initial">#{{ .ReportID}} {{.Report.Error.Message}}</h5>
-            <p>Submitted by {{.Name}}</p>
+            <h5 class="light truncate" style="line-height: initial">{{if .Resolved}}<span class="green-text" style="font-weight: bold">RESOLVED</span> {{end}}#{{ .ReportID}} {{.Report.Error.Message}}</h5>
             <div class="row">
                 <div class="col s12 l6">
                     <div class="card-panel">
